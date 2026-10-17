@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-
-// API Base URL
-const API_BASE = '/api/v1';
+import { api } from './apiService';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'farmer' | 'provider' | 'operations' | 'compliance'>('farmer');
   const [districts, setDistricts] = useState<any[]>([]);
+  const [isLiveBackend, setIsLiveBackend] = useState<boolean>(false);
   
   interface Toast {
     id: string;
@@ -63,76 +62,57 @@ export default function App() {
   useEffect(() => {
     async function init() {
       try {
+        const isLive = await api.checkHealth();
+        setIsLiveBackend(isLive);
+
         // Authenticate Farmer (Ramesh Reddy)
-        const farmerAuth = await fetch(`${API_BASE}/auth/otp/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: '+919876543210', otp: '123456', role: 'farmer' }),
-        }).then(res => res.json());
+        const farmerToken = await api.authenticate('+919876543210', '123456', 'farmer');
 
         // Authenticate Provider (Siva Kumar)
-        const provAuth = await fetch(`${API_BASE}/auth/otp/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: '+919876543211', otp: '123456', role: 'provider' }),
-        }).then(res => res.json());
+        const provToken = await api.authenticate('+919876543211', '123456', 'provider');
 
         // Authenticate Staff
-        const staffAuth = await fetch(`${API_BASE}/auth/otp/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: '+919876543213', otp: '123456', role: 'staff' }),
-        }).then(res => res.json());
+        const staffToken = await api.authenticate('+919876543213', '123456', 'staff');
 
         const tokens = {
-          farmer: farmerAuth.data?.token,
-          provider: provAuth.data?.token,
-          staff: staffAuth.data?.token,
+          farmer: farmerToken,
+          provider: provToken,
+          staff: staffToken,
         };
         setAuthTokens(tokens);
 
         // Fetch Districts
-        const distRes = await fetch(`${API_BASE}/districts`).then(r => r.json());
-        if (distRes.data) setDistricts(distRes.data);
+        const distRes = await api.getDistricts();
+        if (distRes) setDistricts(distRes);
 
         // Fetch Farmer's Farms & Requests
         if (tokens.farmer) {
-          const farmsRes = await fetch(`${API_BASE}/farms`, {
-            headers: { Authorization: `Bearer ${tokens.farmer}` },
-          }).then(r => r.json());
-          if (farmsRes.data && farmsRes.data.length > 0) {
-            setFarmerFarms(farmsRes.data);
-            setSelectedFarmId(farmsRes.data[0].id);
+          const farmsRes = await api.getFarms(tokens.farmer);
+          if (farmsRes && farmsRes.length > 0) {
+            setFarmerFarms(farmsRes);
+            setSelectedFarmId(farmsRes[0].id);
           }
 
-          const reqsRes = await fetch(`${API_BASE}/requests`, {
-            headers: { Authorization: `Bearer ${tokens.farmer}` },
-          }).then(r => r.json());
-          if (reqsRes.data) setFarmerRequests(reqsRes.data);
+          const reqsRes = await api.getFarmerRequests(tokens.farmer);
+          if (reqsRes) setFarmerRequests(reqsRes);
         }
 
         // Fetch Provider's Invitations
         if (tokens.provider) {
-          const invsRes = await fetch(`${API_BASE}/provider/invitations`, {
-            headers: { Authorization: `Bearer ${tokens.provider}` },
-          }).then(r => r.json());
-          if (invsRes.data) setProviderInvitations(invsRes.data);
+          const invsRes = await api.getProviderInvitations(tokens.provider);
+          if (invsRes) setProviderInvitations(invsRes);
         }
 
         // Fetch Staff Pending Reviews
         if (tokens.staff) {
-          const revRes = await fetch(`${API_BASE}/operations/price-reviews?status=ALL`, {
-            headers: { Authorization: `Bearer ${tokens.staff}` },
-          }).then(r => r.json());
-          if (revRes.data) setPendingReviews(revRes.data);
-
-          const qRes = await fetch(`${API_BASE}/operations/staff-queue`, {
-            headers: { Authorization: `Bearer ${tokens.staff}` },
-          }).then(r => r.json());
-          if (qRes.data) setStaffQueue(qRes.data);
+          const revRes = await api.getPriceReviews(tokens.staff);
+          if (revRes) {
+            setPendingReviews(revRes);
+            setStaffQueue(revRes);
+          }
         }
       } catch (err) {
-        console.error('Initialization error:', err);
+        console.warn('Initialization notice:', err);
       }
     }
     init();
@@ -153,40 +133,36 @@ export default function App() {
     if (!selectedFarmId) return;
     try {
       setIsFarmerSubmitting(true);
-      const res = await fetch(`${API_BASE}/requests`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authTokens.farmer}`,
-        },
-        body: JSON.stringify({
+      const units = typeof estimatedUnits === 'string'
+        ? parseFloat(String(estimatedUnits).replace(',', '.')) || 5.5
+        : Number(estimatedUnits) || 5.5;
+
+      const res = await api.createFarmerRequest(
+        {
           farmId: selectedFarmId,
           serviceId: 'srv-tractor',
           scheduledDate: requestedDate,
           timeWindow,
-          estimatedUnits,
+          estimatedUnits: units,
           unitType: 'acre',
           implementRequired,
           soilCondition,
-          notes: `Requested ${implementRequired} for ${estimatedUnits} acres.`,
-        }),
-      }).then(r => r.json());
+          notes: `Requested ${implementRequired} for ${units} acres.`,
+        },
+        authTokens.farmer
+      );
 
-      if (res.success) {
+      if (res.success && res.data) {
         showAlert(`Tractor request #${res.data.id} submitted! Matching algorithm triggered.`, 'success');
         setActiveFarmerRequest(res.data);
 
         // Refresh farmer requests
-        const reqs = await fetch(`${API_BASE}/requests`, {
-          headers: { Authorization: `Bearer ${authTokens.farmer}` },
-        }).then(r => r.json());
-        setFarmerRequests(reqs.data || []);
+        const reqs = await api.getFarmerRequests(authTokens.farmer);
+        setFarmerRequests(reqs || []);
 
         // Refresh provider invitations
-        const invs = await fetch(`${API_BASE}/provider/invitations`, {
-          headers: { Authorization: `Bearer ${authTokens.provider}` },
-        }).then(r => r.json());
-        setProviderInvitations(invs.data || []);
+        const invs = await api.getProviderInvitations(authTokens.provider);
+        setProviderInvitations(invs || []);
       } else {
         showAlert(res.error?.message || 'Failed to submit request', 'danger');
       }
@@ -200,11 +176,9 @@ export default function App() {
   // Farmer: Inspect Approved Quotations for a Request
   const handleViewQuotations = async (requestId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/requests/${requestId}/quotations`, {
-        headers: { Authorization: `Bearer ${authTokens.farmer}` },
-      }).then(r => r.json());
-      setApprovedQuotations(res.data || []);
-      if (!res.data || res.data.length === 0) {
+      const data = await api.getApprovedQuotations(requestId, authTokens.farmer);
+      setApprovedQuotations(data || []);
+      if (!data || data.length === 0) {
         showAlert('No approved quotations yet. Operations review may be in progress.', 'info');
       }
     } catch (err: any) {
@@ -215,18 +189,11 @@ export default function App() {
   // Farmer: Select Quotation & Confirm Booking
   const handleSelectQuotation = async (quotationId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/quotations/${quotationId}/select`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authTokens.farmer}`,
-        },
-        body: JSON.stringify({ paymentCondition: 'CASH' }),
-      }).then(r => r.json());
+      const res = await api.selectQuotation(quotationId, 'CASH', authTokens.farmer);
 
-      if (res.success) {
+      if (res.success && res.data) {
         setActiveBooking(res.data);
-        showAlert(`Booking #${res.data.bookingId} confirmed! Completion OTP generated.`, 'success');
+        showAlert(`Booking #${res.data.bookingId} confirmed! Completion OTP: ${res.data.completionOtp || 'Generated'}.`, 'success');
         // Refresh quotations
         if (activeFarmerRequest) {
           handleViewQuotations(activeFarmerRequest.id);
@@ -245,41 +212,28 @@ export default function App() {
       const subtotal = quoteQuantity * quoteUnitRate;
       const total = subtotal + quoteMobilization + quoteMaterials;
 
-      const res = await fetch(`${API_BASE}/provider/invitations/${invitationId}/quotation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authTokens.provider}`,
+      const lines = [
+        {
+          unit: 'acre',
+          quantity: quoteQuantity,
+          unitRate: quoteUnitRate,
+          mobilizationCharge: quoteMobilization,
+          materialCharge: quoteMaterials,
         },
-        body: JSON.stringify({
-          lines: [
-            {
-              unit: 'acre',
-              quantity: quoteQuantity,
-              unitRate: quoteUnitRate,
-              mobilizationCharge: quoteMobilization,
-              materialCharge: quoteMaterials,
-            },
-          ],
-          providerNote,
-          validHours: 24,
-        }),
-      }).then(r => r.json());
+      ];
+
+      const res = await api.submitQuotation(invitationId, lines, providerNote, authTokens.provider);
 
       if (res.success) {
-        showAlert(`Quotation submitted (Total: ₹${total}). Pending Operations clearance.`, 'success');
+        showAlert(`Quotation submitted (Total: ₹${total.toLocaleString('en-IN')}). Pending Operations clearance.`, 'success');
         setSelectedInvitationId('');
         // Refresh provider invitations
-        const invs = await fetch(`${API_BASE}/provider/invitations`, {
-          headers: { Authorization: `Bearer ${authTokens.provider}` },
-        }).then(r => r.json());
-        setProviderInvitations(invs.data || []);
+        const invs = await api.getProviderInvitations(authTokens.provider);
+        setProviderInvitations(invs || []);
 
         // Refresh staff pending reviews
-        const revs = await fetch(`${API_BASE}/operations/price-reviews?status=ALL`, {
-          headers: { Authorization: `Bearer ${authTokens.staff}` },
-        }).then(r => r.json());
-        setPendingReviews(revs.data || []);
+        const revs = await api.getPriceReviews(authTokens.staff);
+        setPendingReviews(revs || []);
       } else {
         showAlert(res.error?.message || 'Submission failed', 'danger');
       }
@@ -291,22 +245,14 @@ export default function App() {
   // Operations: Approve or Reject Quotation
   const handleReviewQuotation = async (quotationId: string, decision: 'APPROVED' | 'REJECTED') => {
     try {
-      const res = await fetch(`${API_BASE}/operations/quotations/${quotationId}/review`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authTokens.staff}`,
-        },
-        body: JSON.stringify({ decision, reason: reviewNote }),
-      }).then(r => r.json());
+      const res = await api.reviewQuotation(quotationId, decision, reviewNote, authTokens.staff);
 
       if (res.success) {
         showAlert(`Quotation ${decision.toLowerCase()}! Audited under correlation ID.`, 'success');
         // Refresh pending reviews
-        const revs = await fetch(`${API_BASE}/operations/price-reviews?status=ALL`, {
-          headers: { Authorization: `Bearer ${authTokens.staff}` },
-        }).then(r => r.json());
-        setPendingReviews(revs.data || []);
+        const revs = await api.getPriceReviews(authTokens.staff);
+        setPendingReviews(revs || []);
+        setStaffQueue(revs || []);
       } else {
         showAlert(res.error?.message || 'Review failed', 'danger');
       }
@@ -318,14 +264,7 @@ export default function App() {
   // Provider: Trip State Transition
   const handleTripUpdate = async (bookingId: string, newStatus: string) => {
     try {
-      const res = await fetch(`${API_BASE}/bookings/${bookingId}/trip-update`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authTokens.provider}`,
-        },
-        body: JSON.stringify({ newStatus, note: `Status updated to ${newStatus}` }),
-      }).then(r => r.json());
+      const res = await api.updateTripStatus(bookingId, newStatus, authTokens.provider);
 
       if (res.success) {
         showAlert(`Trip status transitioned to: ${newStatus}`, 'info');
@@ -343,28 +282,22 @@ export default function App() {
   // Provider: Verify Farmer Completion OTP
   const handleVerifyCompletionOtp = async (bookingId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/bookings/${bookingId}/verify-completion`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authTokens.provider}`,
-        },
-        body: JSON.stringify({ completionOtp: completionOtpInput }),
-      }).then(r => r.json());
+      const res = await api.verifyCompletionOtp(bookingId, completionOtpInput, authTokens.provider);
 
-      if (res.success) {
+      if (res.success && res.data) {
         showAlert('Completion OTP verified successfully! Job marked CASH_CLOSED.', 'success');
         setCompletionOtpInput('');
         if (activeBooking && activeBooking.bookingId === bookingId) {
           setActiveBooking({ ...activeBooking, status: res.data.finalStatus });
         }
       } else {
-        showAlert(res.error?.message || 'Verification failed', 'danger');
+        showAlert(res.error?.message || 'Verification failed. Please check the OTP.', 'danger');
       }
     } catch (err: any) {
       showAlert(err.message, 'danger');
     }
   };
+
 
   return (
     <div>
@@ -377,6 +310,48 @@ export default function App() {
             <div className="aat-subtitle">Tractor Mechanization Marketplace (AP & TG)</div>
           </div>
         </a>
+
+        {/* Deployment Mode Indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0.5rem' }}>
+          {isLiveBackend ? (
+            <span
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.2rem 0.6rem',
+                borderRadius: '12px',
+                background: '#e8f5e9',
+                color: '#1b5e20',
+                fontWeight: 600,
+                border: '1px solid #c8e6c9',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+              title="Connected to Live Express.js REST API Backend"
+            >
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2e7d32' }}></span>
+              Live API
+            </span>
+          ) : (
+            <span
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.2rem 0.6rem',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.15)',
+                color: '#ffffff',
+                fontWeight: 500,
+                border: '1px solid rgba(255,255,255,0.25)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+              title="Running self-contained client-side demo mode with zero server dependencies"
+            >
+              <span>⚡</span> Cloud Demo Mode
+            </span>
+          )}
+        </div>
 
         {/* Persona Switcher */}
         <nav className="role-nav">
@@ -503,8 +478,11 @@ export default function App() {
                       step="0.5"
                       min="0.5"
                       className="form-control"
-                      value={estimatedUnits}
-                      onChange={e => setEstimatedUnits(parseFloat(e.target.value))}
+                      value={isNaN(estimatedUnits) ? '' : estimatedUnits}
+                      onChange={e => {
+                        const parsed = parseFloat(e.target.value.replace(',', '.'));
+                        setEstimatedUnits(isNaN(parsed) ? 0 : parsed);
+                      }}
                       required
                     />
                   </div>
