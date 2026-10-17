@@ -1,0 +1,20 @@
+{
+  "name": "@aat/domain",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@aat/config": "1.0.0",
+    "@aat/contracts": "1.0.0",
+    "@aat/database": "1.0.0",
+    "@aat/observability": "1.0.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@aat/api",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "node dist/src/index.js",
+    "start": "node dist/src/index.js",
+    "test": "ts-node tests/e2e.test.ts"
+  },
+  "dependencies": {
+    "@aat/config": "1.0.0",
+    "@aat/contracts": "1.0.0",
+    "@aat/database": "1.0.0",
+    "@aat/domain": "1.0.0",
+    "@aat/observability": "1.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/uuid": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}

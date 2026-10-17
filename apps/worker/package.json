@@ -1,0 +1,21 @@
+{
+  "name": "@aat/worker",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "node dist/index.js",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@aat/config": "1.0.0",
+    "@aat/contracts": "1.0.0",
+    "@aat/database": "1.0.0",
+    "@aat/domain": "1.0.0",
+    "@aat/observability": "1.0.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}

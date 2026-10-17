@@ -1,0 +1,25 @@
+{
+  "name": "@aat/database",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "migrate": "ts-node src/migrate.ts",
+    "seed": "ts-node src/seed.ts"
+  },
+  "dependencies": {
+    "@aat/config": "1.0.0",
+    "@aat/contracts": "1.0.0",
+    "@aat/observability": "1.0.0",
+    "pg": "^8.13.1",
+    "sql.js": "^1.12.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.11",
+    "@types/sql.js": "^1.4.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Akanksha Agree Tech (AAT) Platform API",
+    "description": "On-demand Agricultural Mechanization Platform API connecting Farmers, Equipment Providers, and Operations Staff.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000/api/v1",
+      "description": "Local Development Server"
+    }
+  ],
+  "paths": {
+    "/auth/otp/request": {
+      "post": {
+        "summary": "Request Phone OTP Challenge",
+        "description": "Initiates phone authentication challenge. In dev mode, returns test OTP 123456.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": { "type": "string", "example": "+919876543210" },
+                  "role": { "type": "string", "enum": ["farmer", "provider", "staff", "admin"], "default": "farmer" }
+                },
+                "required": ["phone"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OTP challenge created" }
+        }
+      }
+    },
+    "/auth/otp/verify": {
+      "post": {
+        "summary": "Verify Phone OTP Challenge",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": { "type": "string", "example": "+919876543210" },
+                  "otp": { "type": "string", "example": "123456" },
+                  "role": { "type": "string", "example": "farmer" }
+                },
+                "required": ["phone", "otp"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "JWT session token and user profile" }
+        }
+      }
+    },
+    "/districts": {
+      "get": {
+        "summary": "List Reference Districts",
+        "description": "Returns all 61 districts across Andhra Pradesh and Telangana.",
+        "responses": {
+          "200": { "description": "List of reference districts" }
+        }
+      }
+    },
+    "/services": {
+      "get": {
+        "summary": "List Active Services",
+        "responses": {
+          "200": { "description": "Master catalog services" }
+        }
+      }
+    },
+    "/farms": {
+      "get": {
+        "summary": "Get Farmer Land Parcels",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Farms array" } }
+      },
+      "post": {
+        "summary": "Register Farm",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "201": { "description": "Farm registered" } }
+      }
+    },
+    "/requests": {
+      "post": {
+        "summary": "Submit Tractor Service Request",
+        "description": "Creates Tractor request, records outbox event, and initiates provider matching within radius.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "201": { "description": "Request created and matching triggered" } }
+      },
+      "get": {
+        "summary": "List Farmer's Tractor Requests",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Requests array" } }
+      }
+    },
+    "/provider/invitations": {
+      "get": {
+        "summary": "List Provider Invitations within Radius",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Invitations inbox" } }
+      }
+    },
+    "/provider/invitations/{id}/quotation": {
+      "post": {
+        "summary": "Submit Itemized Provider Quotation",
+        "description": "Submits bid lines (unit rate, mobilization, materials) in PENDING_REVIEW state.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "201": { "description": "Quotation submitted for Operations review" } }
+      }
+    },
+    "/operations/price-reviews": {
+      "get": {
+        "summary": "List Quotations for Operations Clearance",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Quotations queue" } }
+      }
+    },
+    "/operations/quotations/{id}/review": {
+      "post": {
+        "summary": "Staff Price Clearance (Approve/Reject)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Decision recorded in audit trail" } }
+      }
+    },
+    "/requests/{id}/quotations": {
+      "get": {
+        "summary": "Get Approved Quotations for Farmer Request",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Only Operations-approved quotations" } }
+      }
+    },
+    "/quotations/{id}/select": {
+      "post": {
+        "summary": "Select Quotation and Confirm Booking Atomically",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Booking confirmed and completion OTP issued" } }
+      }
+    },
+    "/bookings/{id}/verify-completion": {
+      "post": {
+        "summary": "Provider Verifies Farmer's 6-Digit Completion OTP",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Job marked CASH_CLOSED and settlement finalized" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
