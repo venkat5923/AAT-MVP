@@ -170,10 +170,10 @@ export async function seedDatabase(db: DatabaseClient): Promise<void> {
   }
 
   // 4. Seed Deterministic Users
-  const gunturId = districtMap['Guntur'];
+  const nelloreId = districtMap['Sri Potti Sriramulu Nellore'] || districtMap['Guntur'];
 
-  // Farmer: Ramesh Reddy (+919876543210)
-  const farmerUserId = 'usr-farmer-ramesh';
+  // Farmer: Bhanu Kapa (+919876543210)
+  const farmerUserId = 'usr-farmer-bhanu';
   await db.execute(`INSERT OR REPLACE INTO users (id, phone, status) VALUES (?, ?, ?)`, [
     farmerUserId,
     '+919876543210',
@@ -183,51 +183,51 @@ export async function seedDatabase(db: DatabaseClient): Promise<void> {
     farmerUserId,
     'role-farmer',
   ]);
-  const farmerProfileId = 'prof-farmer-ramesh';
+  const farmerProfileId = 'prof-farmer-bhanu';
   await db.execute(
     `INSERT OR REPLACE INTO farmer_profiles (id, user_id, full_name, preferred_language, district_id) VALUES (?, ?, ?, ?, ?)`,
-    [farmerProfileId, farmerUserId, 'Ramesh Reddy', 'te', gunturId]
+    [farmerProfileId, farmerUserId, 'Bhanu Kapa', 'te', nelloreId]
   );
 
   // Farmer's Farms
-  const farm1Id = 'farm-guntur-paddy';
+  const farm1Id = 'farm-dundigam-paddy';
   await db.execute(
     `INSERT OR REPLACE INTO farms (id, farmer_id, farm_name, district_id, address, latitude, longitude, survey_number, size_acres, soil_type)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       farm1Id,
       farmerProfileId,
-      'Guntur East Paddy Field',
-      gunturId,
-      'Pedakakani Mandal, Guntur Rural',
-      16.3067,
-      80.4365,
+      'Dundigam East Paddy Field',
+      nelloreId,
+      'Dundigam Village, Nellore District',
+      14.4426,
+      79.9865,
       'SY-142/B',
       5.5,
       'Wet Clay / Paddy',
     ]
   );
 
-  const farm2Id = 'farm-amaravati-cotton';
+  const farm2Id = 'farm-nellore-cotton';
   await db.execute(
     `INSERT OR REPLACE INTO farms (id, farmer_id, farm_name, district_id, address, latitude, longitude, survey_number, size_acres, soil_type)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       farm2Id,
       farmerProfileId,
-      'Amaravati Cotton Land',
-      gunturId,
-      'Thullur Mandal, Amaravati Area',
-      16.5131,
-      80.5165,
+      'Nellore Chilli & Paddy Land',
+      nelloreId,
+      'Dundigam Rural, Nellore District',
+      14.4500,
+      79.9900,
       'SY-88/1',
       8.0,
       'Black Cotton Soil',
     ]
   );
 
-  // Provider 1: Siva Kumar (+919876543211)
-  const p1UserId = 'usr-prov-siva';
+  // Provider 1: Kapa Nani (+919876543211)
+  const p1UserId = 'usr-prov-kapa-nani';
   await db.execute(`INSERT OR REPLACE INTO users (id, phone, status) VALUES (?, ?, ?)`, [
     p1UserId,
     '+919876543211',
@@ -237,21 +237,21 @@ export async function seedDatabase(db: DatabaseClient): Promise<void> {
     p1UserId,
     'role-provider',
   ]);
-  const p1ProfileId = 'prof-prov-siva';
+  const p1ProfileId = 'prof-prov-kapa-nani';
   await db.execute(
     `INSERT OR REPLACE INTO provider_profiles (id, user_id, business_name, contact_person, is_verified, kyc_status, rating)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [p1ProfileId, p1UserId, 'Siva Kumar Agri Mechanization', 'Siva Kumar', 1, 'VERIFIED', 4.9]
+    [p1ProfileId, p1UserId, 'Kapa Nani Agri Mechanization', 'Kapa Nani', 1, 'VERIFIED', 4.9]
   );
   await db.execute(
     `INSERT OR REPLACE INTO provider_services (id, provider_id, service_id, base_latitude, base_longitude, service_radius_km, is_available, capacity, equipment_details)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      'psrv-siva-tractor',
+      'psrv-nani-tractor',
       p1ProfileId,
       serviceId,
-      16.312,
-      80.442, // ~1.5 km away from farm1
+      14.445,
+      79.988,
       30.0,
       1,
       2,
@@ -259,8 +259,8 @@ export async function seedDatabase(db: DatabaseClient): Promise<void> {
     ]
   );
 
-  // Provider 2: Krishna Krishi Implements (+919876543212)
-  const p2UserId = 'usr-prov-krishna';
+  // Provider 2: Bhanu Naidu (+919876543212)
+  const p2UserId = 'usr-prov-bhanu-naidu';
   await db.execute(`INSERT OR REPLACE INTO users (id, phone, status) VALUES (?, ?, ?)`, [
     p2UserId,
     '+919876543212',
@@ -270,25 +270,25 @@ export async function seedDatabase(db: DatabaseClient): Promise<void> {
     p2UserId,
     'role-provider',
   ]);
-  const p2ProfileId = 'prof-prov-krishna';
+  const p2ProfileId = 'prof-prov-bhanu-naidu';
   await db.execute(
     `INSERT OR REPLACE INTO provider_profiles (id, user_id, business_name, contact_person, is_verified, kyc_status, rating)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [p2ProfileId, p2UserId, 'Krishna Krishi Implements', 'K. V. Krishna', 1, 'VERIFIED', 4.8]
+    [p2ProfileId, p2UserId, 'Bhanu Naidu Drone Agri Services', 'Bhanu Naidu', 1, 'VERIFIED', 4.8]
   );
   await db.execute(
     `INSERT OR REPLACE INTO provider_services (id, provider_id, service_id, base_latitude, base_longitude, service_radius_km, is_available, capacity, equipment_details)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      'psrv-krishna-tractor',
+      'psrv-naidu-drone',
       p2ProfileId,
       serviceId,
-      16.34,
-      80.42, // ~4.5 km away from farm1
+      14.448,
+      79.982,
       35.0,
       1,
       3,
-      'John Deere 5050D (50 HP) with Heavy Duty Cultivator & Leveler',
+      'DJI Agras T40 40L Precision Spraying Drone',
     ]
   );
 
